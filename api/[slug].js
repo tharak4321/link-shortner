@@ -5,14 +5,19 @@ export const config = {
 };
 
 export default async function handler(request) {
-    const { pathname } = new URL(request.url);
-    const slug = pathname.substring(1); // Remove the leading '/'
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug'); // Get slug from the query parameter
 
-    // If there's no slug, redirect to the homepage.
+    // Define the homepage URL to redirect to if anything goes wrong
     const homeUrl = new URL('/', request.url);
 
     if (!slug) {
-        return Response.redirect(homeUrl, 307); // 307 is a temporary redirect
+        // If there's no slug (e.g., someone just visits the site root), go to the homepage
+        // Vercel is smart enough to serve your public/index.html file here.
+        return new Response('Redirecting to homepage...', {
+            status: 307,
+            headers: { Location: homeUrl.toString() },
+        });
     }
 
     try {
@@ -23,12 +28,12 @@ export default async function handler(request) {
             // If found, perform a permanent redirect (308)
             return Response.redirect(longUrl, 308);
         } else {
-            // If not found, redirect to the homepage
+            // If the slug is not found in the database, redirect to the homepage
             return Response.redirect(homeUrl, 307);
         }
     } catch (error) {
         console.error('Error fetching from KV:', error);
-        // In case of an error, redirect to homepage as a fallback
+        // In case of a database error, also redirect to the homepage as a fallback
         return Response.redirect(homeUrl, 307);
     }
 }
