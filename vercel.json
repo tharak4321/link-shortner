@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/([a-zA-Z0-9]{6})",
+      "destination": "/api/[slug]?slug=$1"
+    }
+  ]
+}
