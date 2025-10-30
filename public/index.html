@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Custom Link Shortener</title>
+    <style>
+        :root {
+            --bg-dark: #111827; --card-bg: #1f2937; --primary-accent: #3b82f6;
+            --primary-hover: #2563eb; --text-light: #f9fafb; --text-muted: #9ca3af;
+            --border-color: #374151; --success-bg: #166534; --error-bg: #991b1b;
+        }
+        body {
+            font-family: system-ui, sans-serif; background-color: var(--bg-dark);
+            color: var(--text-light); display: flex; justify-content: center;
+            align-items: center; height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
+        }
+        .container {
+            width: 100%; max-width: 500px; background-color: var(--card-bg);
+            padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+        }
+        h1 { text-align: center; margin: 0 0 2rem; font-size: 1.8rem; }
+        .input-group { display: flex; flex-direction: column; gap: 1rem; }
+        input {
+            width: 100%; padding: 14px 16px; border: 1px solid var(--border-color);
+            border-radius: 8px; background-color: var(--bg-dark); color: var(--text-light);
+            font-size: 1rem; box-sizing: border-box; transition: all 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
+        button {
+            padding: 14px; border: none; border-radius: 8px; background-color: var(--primary-accent);
+            color: white; font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:active { transform: scale(0.98); }
+        button:disabled { background-color: #374151; cursor: not-allowed; }
+        .result-area { margin-top: 2rem; opacity: 0; transform: translateY(10px); transition: all 0.3s; visibility: hidden; background-color: var(--bg-dark); padding: 1rem; border-radius: 8px; }
+        .result-area.visible { opacity: 1; transform: translateY(0); visibility: visible; }
+        #result { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        #short-url-output { font-family: monospace; font-size: 1rem; color: var(--text-light); word-break: break-all; }
+        #copy-btn { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--card-bg); color: var(--text-light); cursor: pointer; transition: background-color 0.2s; }
+        #copy-btn:hover { background-color: var(--border-color); }
+        .message { margin-top: 1rem; padding: 12px; border-radius: 6px; text-align: center; font-size: 0.9rem; display: none; }
+        .message.success { background-color: var(--success-bg); color: white; }
+        .message.error { background-color: var(--error-bg); color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>My Custom Shortener</h1>
+        <div class="input-group">
+            <input type="url" id="long-url-input" placeholder="Enter a long URL to shorten..." required>
+            <button id="shorten-btn">Shorten</button>
+        </div>
+        <div id="message-box" class="message"></div>
+        <div id="result-area" class="result-area">
+            <div id="result">
+                <a id="short-url-output" href="#" target="_blank" rel="noopener"></a>
+                <button id="copy-btn">Copy</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const longUrlInput = document.getElementById('long-url-input');
+        const shortenBtn = document.getElementById('shorten-btn');
+        const resultArea = document.getElementById('result-area');
+        const shortUrlOutput = document.getElementById('short-url-output');
+        const copyBtn = document.getElementById('copy-btn');
+        const messageBox = document.getElementById('message-box');
+
+        shortenBtn.addEventListener('click', async () => {
+            const longUrl = longUrlInput.value.trim();
+            if (!isValidUrl(longUrl)) {
+                showMessage('Please enter a valid URL.', 'error');
+                return;
+            }
+
+            shortenBtn.disabled = true;
+            shortenBtn.textContent = 'Working...';
+            resultArea.classList.remove('visible');
+            messageBox.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/shorten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: longUrl })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Something went wrong');
+                }
+                
+                shortUrlOutput.textContent = data.shortUrl.replace(/^https?:\/\//, ''); // Display without protocol
+                shortUrlOutput.href = data.shortUrl;
+                resultArea.classList.add('visible');
+
+            } catch (error) {
+                showMessage(error.message, 'error');
+            } finally {
+                shortenBtn.disabled = false;
+                shortenBtn.textContent = 'Shorten';
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(shortUrlOutput.href)
+                .then(() => showMessage('Copied to clipboard!', 'success'))
+                .catch(() => showMessage('Failed to copy link.', 'error'));
+        });
+        
+        function isValidUrl(string) { try { new URL(string); return true; } catch (_) { return false; } }
+        function showMessage(text, type = 'success') {
+            messageBox.textContent = text;
+            messageBox.className = `message ${type}`;
+            messageBox.style.display = 'block';
+            setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
+        }
+    </script>
+</body>
+</html>
